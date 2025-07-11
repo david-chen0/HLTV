@@ -64,7 +64,7 @@ class HLTVScraper:
             try:
                 # Wait for and click the button by visible text
                 button = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, f'//a[contains(text(), "{button_text}")]'))
+                    EC.element_to_be_clickable((By.XPATH, f'//button[contains(text(), "{button_text}")]'))
                 )
                 button.click()
                 time.sleep(2) # Wait for the DOM to update after click
@@ -74,4 +74,9 @@ class HLTVScraper:
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
         self.driver.close() # Close the driver after each call is finished
+
+        # # Printing for testing, comment this out when not needed
+        # with open("page_dump.html", "w", encoding="utf-8") as f:
+        #     f.write(soup.prettify())
+
         return soup
