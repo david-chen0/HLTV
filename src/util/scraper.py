@@ -22,25 +22,22 @@ class HLTVScraper:
 
         # Browser options
         options = Options()
-        # options.add_argument("start-maximized")
-        options.add_argument("disable-infobars")
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
-        # options.add_argument("--headless") # Runs the Chrome browser without popping up. Currently doesn't work since Cloudflare will block it
         options.add_argument("--disable-crash-reporter")
         options.add_argument("--disable-popup-blocking")
         options.add_argument("--disable-blink-features=AutomationControlled")  # Reduces automation detection
-        options.add_argument("--remote-debugging-port=9222")  # Helpful for debugging and avoiding crashes
         options.add_argument("--disable-dev-shm-usage")  # Fixes crash issues in Docker/Linux environments
 
-        # # TODO: Might need this if HLTV has some mechanism to block Selenium
+        # options.add_argument("--headless") # Runs the Chrome browser without popping up. Currently doesn't work since Cloudflare will block it
         # options.add_argument(
         #     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
         # )
 
         # Browser
         self.driver = uc.Chrome(options=options)
+        self.driver.maximize_window()
 
     def get_website(self, url: str, buttons_to_click: list = []) -> BeautifulSoup:
         """
@@ -51,6 +48,8 @@ class HLTVScraper:
 
         Output is a BeautifulSoup containing the scraped content
         """
+        print(f"Scraping the webpage {url}")
+
         # Getting the site
         self.rate_limiter.call(self.driver.get, url)
 
@@ -78,5 +77,7 @@ class HLTVScraper:
         # # Printing for testing, comment this out when not needed
         # with open("page_dump.html", "w", encoding="utf-8") as f:
         #     f.write(soup.prettify())
+
+        print(f"Successfully scraped webpage {url}")
 
         return soup

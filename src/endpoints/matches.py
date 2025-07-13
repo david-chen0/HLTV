@@ -3,7 +3,7 @@ from datetime import datetime
 
 hltv_sort_by_time_page_tag = "plausible-event-name=Matches+click+time+match" # All matches in the HLTV matches page sorted by time will have this tag
 
-def get_upcoming_matches(scraper: HLTVScraper, skip_pending_team_matches=False) -> dict:
+def get_upcoming_matches(scraper: HLTVScraper, skip_pending_team_matches=False) -> list:
     """
     Looks through HLTV's upcoming matches and returns a list of dicts, where each dict represents a match and has the following fields:
 
