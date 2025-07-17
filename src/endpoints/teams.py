@@ -1,15 +1,52 @@
+from classes.team import Team
 from enums.maps import Maps
 from enums.match_types import MatchType
+from util.global_cache import *
 from util.scraper import *
 from datetime import datetime, timedelta
+import re
 
-# def get_team(scraper: HLTVScraper, team_name: str, time: datetime) -> dict:
-#     """
-#     Returns info for the given team name at the specified point in time. Returned dict will have the following fields:
+# THERE IS ALSO A DIFFERENT PAGE FOR GETTING TEAMS AT A SPECIFIC POINT IN TIME
+# IT HAS A DIFFERENT STRUCTURE FROM THE GENERAL PAGE ABOUT A TEAM, MAY NEED TO SETUP A DIFFERENT SCRAPE FOR THAT TOO
+# STRUCTURE FOR THIS: https://www.hltv.org/stats/teams/9565/vitality?startDate=2025-04-13&endDate=2025-07-13
+# BASICALLY https://www.hltv.org/stats/teams/9565/vitality AND THEN THE SAME LOGIC FOR ADDING THIS ON IN list_top_teams
 
+# LET'S FIRST MAKE A METHOD WHERE WE PASS IN THE URL
+# THEN WE CAN TRY TO COME UP WITH A WAY TO GET THE URL
+# CURRENTLY THE URL LOOKS SOMETHING LIKE THIS: https://www.hltv.org/team/9565/vitality
+# ONLY THE NUMBER AFTER /team/ MATTERS, NAME DOESN'T MATTER
+# URL ABOVE GIVES SAME PAGE AS https://www.hltv.org/team/9565/randomstuff
+def get_team(scraper: HLTVScraper, id: int, team_name: str = None) -> Team:
+    """
+    Returns info for the given team name. This just returns general information about the team, not specific to a point in time.
     
-#     """
-#     return
+    Returned Team class will have the following fields:
+    """
+    cached_team = global_cache.get(CacheType.TEAMS, id)
+    if cached_team:
+        return cached_team
+
+    # The team name doesn't matter, it's just for logging purposes. Only the ID matters
+    url = f"{scraper.default_url}/team/{id}/{team_name if team_name else "random"}"
+
+    buttons = [scraper.cookie_text]
+    soup = scraper.get_website(url, buttons)
+
+    # things we want to return:
+    # fill in general team stuff(id, team name, etc)
+    # players
+    # coach
+    # valve and world ranking
+    # average player age
+
+    team_profile = soup.find("div", class_="teamProfile")
+
+    # get all the players
+    # we want to call get_players so that we have more info on the players than what's provided here and also the player info gets cached
+
+    # add the team info to cache before returning
+
+    return
 
 
 def list_top_teams(
@@ -17,20 +54,24 @@ def list_top_teams(
         start_date: datetime,
         end_date: datetime,
         match_type: MatchType = None,
-        maps: Maps = None,
+        maps: list[Maps] = None,
         num_results: int = None
-    ) -> list:
+    ) -> list[Team]:
     """
     Retrieves the top teams from HLTV in the specified [start_date, end_date] timeframe.
     The match_type argument specifies the type of match to filter for
-    The maps argument specifies the maps to filter for games on
+    The maps argument specifies the list of maps to filter for games on
     The num_results argument specifies the number of top teams to fetch for
      
-    The returned value is a list of dicts, ordered by team rank, each with the following fields:
+    The returned value is a list of Team classes, ordered by team rank, each with the following fields:
 
+    General fields(description in the class):
+    id
+    name
+    region
+
+    Time-specific fields:
     rank: The rank of the team
-    name: The name of the team
-    region: The country/region the team is based in(ex: Russia, Europe, Brazil, Other, etc)
     num_maps_played: The number of maps played by the team in the specified timeframe
     kd_diff: The K-D diff by the team in the specified timeframe
     kd_ratio: The K-D ratio by the team in the specified timeframe
@@ -47,7 +88,8 @@ def list_top_teams(
     if match_type: # When match_type is null, we make the query for all match types, which is done by not specifying any arguments in the url
         url += f"&matchType={match_type.value}"
     if maps: # When maps is null, we make the query for all maps, which is done by not specifying any arguments in the url
-        url += f"&maps={maps.value}"
+        for map in maps:
+            url += f"&maps={map.value}"
     if num_results: # When num_results is null, we give all results back to user, which is done by not specifying any arguments in the url
         url += f"&rankingFilter=Top{num_results}"
 
@@ -76,6 +118,7 @@ def list_top_teams(
             raise Exception(f"Retrieved headers {header} is not what's expected in {expected_header}, scraping might not work for this new format")
 
     # Each of the team info is stored in a row, ordered by team rank
+    interval_string = CacheManager.datetime_interval_to_string(start_date, end_date) # String representing the time interval we're scraping this data for
     teams = [] # The result
     rows = body.find_all("tr")
     for idx in range(len(rows)):
@@ -101,16 +144,30 @@ def list_top_teams(
         #   1.14
         # </td>
 
-        teams.append({
-            "rank": idx + 1,
-            "name": cells[0].find('a').get_text(strip=True),
-            "region": cells[0].find('img')['title'],
-            "num_maps_played": cells[1].get_text(strip=True),
-            "kd_diff": cells[2].get_text(strip=True),
-            "kd_ratio": cells[3].get_text(strip=True),
-            "rating": cells[3].get_text(strip=True)
-        })
+        # Stats we scraped
+        id = int(re.search(r'/stats/teams/(\d+)/', cells[0].find('a').get('href')).group(1)) # Using RegEx to parse the href for the team's id
+        new_team = Team(
+            id=id,
+            name=cells[0].find('a').get_text(strip=True),
+            region=cells[0].find('img')['title'],
+            time_specific_data={
+                interval_string: {
+                    "rank": idx + 1,
+                    "num_maps_played": cells[1].get_text(strip=True),
+                    "kd_diff": cells[2].get_text(strip=True),
+                    "kd_ratio": cells[3].get_text(strip=True),
+                    "rating": cells[3].get_text(strip=True)
+                }
+            }
+        )
 
-    print(teams)
+        # Adds the item into the cache or merges it into the existing cache item if one exists
+        cached_team = global_cache.get(CacheType.TEAMS, id)
+        if cached_team is not None:
+            CacheManager.merge_dataclasses(cached_team, new_team)
+            teams.append(cached_team)
+        else:
+            global_cache.set(CacheType.TEAMS, id, new_team)
+            teams.append(new_team)
 
     return teams

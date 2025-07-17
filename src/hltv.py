@@ -1,3 +1,5 @@
+from classes.match import Match
+from classes.team import Team
 from endpoints.matches import *
 from endpoints.teams import *
 from enums.maps import Maps
@@ -17,18 +19,25 @@ class HLTV:
         self.scraper = HLTVScraper(max_calls_per_second)
 
     # Match APIs
-    def get_upcoming_matches(self, skip_pending_team_matches: bool) -> list:
+    def get_upcoming_matches(self, skip_pending_team_matches: bool) -> list[Match]:
         return get_upcoming_matches(self.scraper, skip_pending_team_matches)
     
     # Team APIs
+    def get_team(
+        self,
+        id: str,
+        team_name: str = None
+    ) -> Team:
+        return get_team(self.scraper, id, team_name)
+
     def list_top_teams(
-            self,
-            start_date: datetime,
-            end_date: datetime,
-            match_type: MatchType = None,
-            maps: Maps = None,
-            num_results: int = None
-        ) -> list:
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        match_type: MatchType = None,
+        maps: list[Maps] = None,
+        num_results: int = None
+    ) -> list[Team]:
         return list_top_teams(
             self.scraper,
             start_date,

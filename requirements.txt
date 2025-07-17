@@ -2,9 +2,8 @@
 # Install these dependencies by activating virtual environment and running
 # pip install -r requirements.txt
 
-pandas
-numpy
 bs4
 selenium
 undetected_chromedriver
 setuptools
+cachetools

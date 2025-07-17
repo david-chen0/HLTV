@@ -74,9 +74,9 @@ class HLTVScraper:
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
         self.driver.close() # Close the driver after each call is finished
 
-        # # Printing for testing, comment this out when not needed
-        # with open("page_dump.html", "w", encoding="utf-8") as f:
-        #     f.write(soup.prettify())
+        # Printing for testing, comment this out when not needed
+        with open("page_dump.html", "w", encoding="utf-8") as f:
+            f.write(soup.prettify())
 
         print(f"Successfully scraped webpage {url}")
 

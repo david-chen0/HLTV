@@ -1,16 +1,21 @@
+from classes.match import Match
 from util.scraper import *
 from datetime import datetime
 
 hltv_sort_by_time_page_tag = "plausible-event-name=Matches+click+time+match" # All matches in the HLTV matches page sorted by time will have this tag
 
-def get_upcoming_matches(scraper: HLTVScraper, skip_pending_team_matches=False) -> list:
+def get_upcoming_matches(scraper: HLTVScraper, skip_pending_team_matches=False) -> list[Match]:
     """
-    Looks through HLTV's upcoming matches and returns a list of dicts, where each dict represents a match and has the following fields:
+    Looks through HLTV's upcoming matches and returns a list of Match classes.
+    
+    Each Match class has the following fields filled in, where the fields are described in the Match class:
 
-    team1: Name of the first team of this match(None if undecided/unclear)
-    team2: Name of the second team of this match(None if undecided/unclear)
-    format: The type of match this is(ex: bo1, bo3, bo5)
-    match_time: The time this match will be played as a datetime object
+    match_link
+    team1
+    team2
+    format
+    event
+    match_time
 
     The results are ordered based on ascending time. If skip_pending_team_matches is set to True, then matches where a team is yet to be decided will be skipped
     """
@@ -62,13 +67,15 @@ def get_upcoming_matches(scraper: HLTVScraper, skip_pending_team_matches=False) 
         event = event_div.get("data-event-headline") if event_div else None
 
         # Adding the match to the list
-        matches.append({
-            "team1": team1_name,
-            "team2": team2_name,
-            "format": match_format,
-            "event": event,
-            "match_time": match_time,
-            "match_link": match_link,
-        })
+        matches.append(
+            Match(
+                match_link=match_link,
+                team1=team1_name,
+                team2=team2_name,
+                format=match_format,
+                event=event,
+                match_time=match_time
+            )
+        )
 
     return matches
