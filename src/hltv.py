@@ -1,6 +1,8 @@
 from classes.match import Match
+from classes.player import Player
 from classes.team import Team
 from endpoints.matches import *
+from endpoints.players import *
 from endpoints.teams import *
 from enums.maps import Maps
 from enums.match_types import MatchType
@@ -22,10 +24,18 @@ class HLTV:
     def get_upcoming_matches(self, skip_pending_team_matches: bool) -> list[Match]:
         return get_upcoming_matches(self.scraper, skip_pending_team_matches)
     
+    # Player APIs
+    def get_player(
+            self,
+            id: int,
+            player_name: str = None
+    ) -> Player:
+        return get_player(self.scraper, id)
+    
     # Team APIs
     def get_team(
         self,
-        id: str,
+        id: int,
         team_name: str = None
     ) -> Team:
         return get_team(self.scraper, id, team_name)

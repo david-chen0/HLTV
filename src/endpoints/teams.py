@@ -18,7 +18,8 @@ import re
 # URL ABOVE GIVES SAME PAGE AS https://www.hltv.org/team/9565/randomstuff
 def get_team(scraper: HLTVScraper, id: int, team_name: str = None) -> Team:
     """
-    Returns info for the given team name. This just returns general information about the team, not specific to a point in time.
+    Returns info for the given team ID.
+    This just returns current general information about the team, not specific to an interval of time.
     
     Returned Team class will have the following fields:
     """
@@ -41,8 +42,12 @@ def get_team(scraper: HLTVScraper, id: int, team_name: str = None) -> Team:
 
     team_profile = soup.find("div", class_="teamProfile")
 
-    # get all the players
-    # we want to call get_players so that we have more info on the players than what's provided here and also the player info gets cached
+    # Getting all the players
+    bodyshot_team_div = team_profile.find("div", class_="bodyshot-team g-grid")
+    player_anchors = bodyshot_team_div.find_all("a", class_="col-custom")
+    for player_anchor in player_anchors:
+        id = re.search(r"/player/(\d+)/", player_anchor['href']).group(1)
+        # get the player
 
     # add the team info to cache before returning
 

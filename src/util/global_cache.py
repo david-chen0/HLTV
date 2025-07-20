@@ -29,7 +29,6 @@ class CacheManager:
     # and does not require an additional call to put the item back in the cache.
     @staticmethod
     def merge_dataclasses(existing_object: Any, new_object: Any):
-
         # Helper method to deep merge dicts, where the incoming dict's values are prioritized over the base dict
         def deep_merge_dicts(base: dict, incoming: dict) -> dict:
             for key, new_value in incoming.items():
