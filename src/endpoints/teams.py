@@ -3,6 +3,7 @@ from enums.maps import Maps
 from enums.match_types import MatchType
 from util.global_cache import *
 from util.scraper import *
+from util.url_util import *
 from datetime import datetime, timedelta
 import re
 
@@ -11,11 +12,7 @@ import re
 # STRUCTURE FOR THIS: https://www.hltv.org/stats/teams/9565/vitality?startDate=2025-04-13&endDate=2025-07-13
 # BASICALLY https://www.hltv.org/stats/teams/9565/vitality AND THEN THE SAME LOGIC FOR ADDING THIS ON IN list_top_teams
 
-# LET'S FIRST MAKE A METHOD WHERE WE PASS IN THE URL
-# THEN WE CAN TRY TO COME UP WITH A WAY TO GET THE URL
-# CURRENTLY THE URL LOOKS SOMETHING LIKE THIS: https://www.hltv.org/team/9565/vitality
-# ONLY THE NUMBER AFTER /team/ MATTERS, NAME DOESN'T MATTER
-# URL ABOVE GIVES SAME PAGE AS https://www.hltv.org/team/9565/randomstuff
+
 def get_team(scraper: HLTVScraper, id: int, team_name: str = None) -> Team:
     """
     Returns info for the given team ID.
@@ -33,25 +30,54 @@ def get_team(scraper: HLTVScraper, id: int, team_name: str = None) -> Team:
     buttons = [scraper.cookie_text]
     soup = scraper.get_website(url, buttons)
 
-    # things we want to return:
-    # fill in general team stuff(id, team name, etc)
-    # players
-    # coach
-    # valve and world ranking
-    # average player age
-
     team_profile = soup.find("div", class_="teamProfile")
 
     # Getting all the players
     bodyshot_team_div = team_profile.find("div", class_="bodyshot-team g-grid")
     player_anchors = bodyshot_team_div.find_all("a", class_="col-custom")
+    players = {}
     for player_anchor in player_anchors:
-        id = re.search(r"/player/(\d+)/", player_anchor['href']).group(1)
-        # get the player
+        player_name = player_anchor['title']
+        player_id = int(re.search(r"/player/(\d+)/", player_anchor['href']).group(1))
+        players[player_name] = player_id
 
-    # add the team info to cache before returning
+    # Profile Top Box
+    profile_top_box_div = team_profile.find("div", class_="standard-box profileTopBox clearfix")
+    
+    profile_team_container_div = profile_top_box_div.find("div", class_="profile-team-container text-ellipsis")
+    profile_team_info_div = profile_team_container_div.find("div", class_="profile-team-info")
+    region = profile_team_info_div.find("div", class_="team-country text-ellipsis").get_text(strip=True)
+    name = profile_team_info_div.find("h1", class_="profile-team-name text-ellipsis").get_text(strip=True)
 
-    return
+    profile_team_stats_container_div = profile_top_box_div.find("div", class_="profile-team-stats-container")
+    valve_rank = -1
+    world_rank = -1
+    for stat_div in profile_team_stats_container_div.find("div", class_="profile-team-stat-50-50").find_all("div", class_="profile-team-stat"):
+        rank_text = int(stat_div.select_one('.right a').get_text(strip=True)[1:]) # Converts '#1' to 1(int)
+        label = stat_div.find('b').get_text(strip=True)
+        if label == 'Valve ranking':
+            valve_rank = rank_text
+        elif label == 'World ranking':
+            world_rank = rank_text
+    coach_anchor = profile_team_stats_container_div.find("a", class_="a-reset right")
+    coach_id = int(coach_anchor["href"].split("/")[2])
+    coach_name = coach_anchor.find("span").get_text(strip=True).strip("'")
+    coach = {coach_name: coach_id}
+
+    team = Team(
+        id=id,
+        name=name,
+        region=region,
+        valve_rank=valve_rank,
+        world_rank=world_rank,
+        players=players,
+        coach=coach
+    )
+
+    # Adding the team info to the cache before returning
+    global_cache.set(CacheType.TEAMS, id, team)
+
+    return team
 
 
 def list_top_teams(
@@ -88,13 +114,8 @@ def list_top_teams(
     if num_results and num_results not in possible_num_results:
         raise Exception(f"The number of top teams to get must be one of {possible_num_results}")
 
-    # Ex link with all arguments: https://www.hltv.org/stats/teams?startDate=2025-04-09&endDate=2025-07-09&matchType=Majors&maps=de_dust2&rankingFilter=Top20
-    url = f"{scraper.default_url}/stats/teams?startDate={start_date.strftime('%Y-%m-%d')}&endDate={end_date.strftime('%Y-%m-%d')}"
-    if match_type: # When match_type is null, we make the query for all match types, which is done by not specifying any arguments in the url
-        url += f"&matchType={match_type.value}"
-    if maps: # When maps is null, we make the query for all maps, which is done by not specifying any arguments in the url
-        for map in maps:
-            url += f"&maps={map.value}"
+    url = f"{scraper.default_url}/stats/teams?"
+    url += URLUtil.get_end_of_url(start_date, end_date, match_type, maps)
     if num_results: # When num_results is null, we give all results back to user, which is done by not specifying any arguments in the url
         url += f"&rankingFilter=Top{num_results}"
 

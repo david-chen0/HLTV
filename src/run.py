@@ -16,8 +16,9 @@ client = HLTV(1)
 #     )
 # )
 
-# client.get_team(9565) # vitality
+# print(client.get_team(9565)) # vitality
+print(client.get_team(7020)) # spirit
 
-print(client.get_player(21167)) # donk
+# print(client.get_player(21167)) # donk
 # print(client.get_player(11893)) # zywoo
 # print(client.get_player(24177)) # kyousuke

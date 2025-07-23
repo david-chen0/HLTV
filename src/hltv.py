@@ -30,7 +30,7 @@ class HLTV:
             id: int,
             player_name: str = None
     ) -> Player:
-        return get_player(self.scraper, id)
+        return get_player(self.scraper, id, player_name)
     
     # Team APIs
     def get_team(

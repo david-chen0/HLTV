@@ -72,6 +72,7 @@ def get_player(scraper: HLTVScraper, id: int, player_name: str = None) -> Player
     # Achievement Box
     achievement_box_div = player_profile_div.find("div", class_="tab-content hidden", id="achievementBox")
 
+    # Helper method to get highlighted stats
     def get_highlighted_stats(total_div, plural_form: str, singular_form: str) -> dict:
         # Plural form(ex: "Majors") is used to get rid of plural form to normalize the text(in case player only has singular)
         highlighted_stats_box_div = total_div.find("div", class_="highlighted-stats-box")
