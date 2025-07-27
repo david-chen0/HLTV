@@ -11,13 +11,18 @@ class CacheType(Enum):
 
 class CacheManager:
     DATE_FORMAT = "%Y-%m-%d"
+    ALL_TIME_INTERVAL = "ALL_TIME"
     
     @staticmethod
     def datetime_interval_to_string(start_date: datetime, end_date: datetime) -> str:
+        # If either start date or end date is not passed in, we assume the call is for all time
+        if not start_date or not end_date:
+            return ALL_TIME_INTERVAL
         return f"{start_date.strftime(CacheManager.DATE_FORMAT)} to {end_date.strftime(CacheManager.DATE_FORMAT)}"
     
     @staticmethod
     def interval_string_to_datetime(interval_string) -> tuple[datetime, datetime]:
+        # NEED TO H ANDLE CASE IN WHICH INTERVAL_STRING IS "ALL"
         start_str, end_str = interval_string.split(" to ")
         start_date = datetime.strptime(start_str, CacheManager.DATE_FORMAT)
         end_date = datetime.strptime(end_str, CacheManager.DATE_FORMAT)

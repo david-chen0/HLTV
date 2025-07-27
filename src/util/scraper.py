@@ -69,10 +69,10 @@ class HLTVScraper:
                 time.sleep(2) # Wait for the DOM to update after click
             except Exception as e:
                 # If button click fails, just print a message saying so
-                print(f"Failed to click button {button_text} due to error {e}")
+                # print(f"Failed to click button {button_text} due to error {e}")
+                print(f"Failed to click button \"{button_text}\"")
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
-        self.driver.close() # Close the driver after each call is finished
 
         # Printing for testing, comment this out when not needed
         with open("page_dump.html", "w", encoding="utf-8") as f:
@@ -81,3 +81,7 @@ class HLTVScraper:
         print(f"Successfully scraped webpage {url}")
 
         return soup
+    
+    def end_scraping(self):
+        # Quitting the driver once everything finishes
+        self.driver.quit()

@@ -82,14 +82,15 @@ def get_team(scraper: HLTVScraper, id: int, team_name: str = None) -> Team:
 
 def list_top_teams(
         scraper: HLTVScraper,
-        start_date: datetime,
-        end_date: datetime,
+        start_date: datetime=None,
+        end_date: datetime=None,
         match_type: MatchType = None,
         maps: list[Maps] = None,
         num_results: int = None
     ) -> list[Team]:
     """
     Retrieves the top teams from HLTV in the specified [start_date, end_date] timeframe.
+    If one of start date or end date isn't specified, then it will query over all time
     The match_type argument specifies the type of match to filter for
     The maps argument specifies the list of maps to filter for games on
     The num_results argument specifies the number of top teams to fetch for
@@ -108,13 +109,13 @@ def list_top_teams(
     kd_ratio: The K-D ratio by the team in the specified timeframe
     rating: The HLTV 2.1 rating of the team in the specified timeframe
     """
-    if start_date > end_date - timedelta(weeks=1):
+    if (start_date and end_date) and (start_date > end_date - timedelta(weeks=1)):
         raise Exception(f"Input start date {start_date} must be at least one week before the end date {end_date}")
     possible_num_results = [5, 10, 20, 30, 50]
     if num_results and num_results not in possible_num_results:
         raise Exception(f"The number of top teams to get must be one of {possible_num_results}")
 
-    url = f"{scraper.default_url}/stats/teams?"
+    url = f"{scraper.default_url}/stats/teams"
     url += URLUtil.get_end_of_url(start_date, end_date, match_type, maps)
     if num_results: # When num_results is null, we give all results back to user, which is done by not specifying any arguments in the url
         url += f"&rankingFilter=Top{num_results}"

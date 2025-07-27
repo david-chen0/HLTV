@@ -20,6 +20,9 @@ class HLTV:
     def __init__(self, max_calls_per_second: int):
         self.scraper = HLTVScraper(max_calls_per_second)
 
+    def close_connection(self):
+        self.scraper.end_scraping()
+
     # Match APIs
     def get_upcoming_matches(self, skip_pending_team_matches: bool) -> list[Match]:
         return get_upcoming_matches(self.scraper, skip_pending_team_matches)
@@ -32,6 +35,17 @@ class HLTV:
     ) -> Player:
         return get_player(self.scraper, id, player_name)
     
+    def get_player_stats(
+            self,
+            id: int,
+            player_name: str = None,
+            start_date: datetime=None,
+            end_date: datetime=None,
+            match_type: MatchType = None,
+            maps: list[Maps] = None
+    ) -> Player:
+        return get_player_stats(self.scraper, id, player_name, start_date, end_date, match_type, maps)
+    
     # Team APIs
     def get_team(
         self,
@@ -42,8 +56,8 @@ class HLTV:
 
     def list_top_teams(
         self,
-        start_date: datetime,
-        end_date: datetime,
+        start_date: datetime=None,
+        end_date: datetime=None,
         match_type: MatchType = None,
         maps: list[Maps] = None,
         num_results: int = None

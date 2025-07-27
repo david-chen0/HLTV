@@ -1,6 +1,9 @@
 from classes.player import Player
+from enums.maps import Maps
+from enums.match_types import MatchType
 from util.global_cache import *
 from util.scraper import *
+from util.url_util import *
 import re
 
 def get_player(scraper: HLTVScraper, id: int, player_name: str = None) -> Player:
@@ -146,18 +149,87 @@ def get_player(scraper: HLTVScraper, id: int, player_name: str = None) -> Player
 
 def get_player_stats(
         scraper: HLTVScraper,
-        start_date: datetime,
-        end_date: datetime,
         id: int,
-        player_name: str = None
+        player_name: str = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
+        match_type: MatchType = None,
+        maps: list[Maps] = None
     ) -> Player:
     """
     Gets the full player's stats for the input time interval and returns the Player object.
     """
+    interval_string = CacheManager.datetime_interval_to_string(start_date, end_date) # String representing the time interval we're scraping this data for
+
     # Fetch the player object if not in the cache
     player = global_cache.get(CacheType.PLAYERS, id)
-    if not player:
+    if player:
+        # We skip if the player already has the data
+        # We process it for all time interval again though, as it could be different from when we last processed it
+        if interval_string != CacheManager.ALL_TIME_INTERVAL and interval_string in player.time_specific_data:
+            return player
+    else:
         player = get_player(scraper, id, player_name)
 
-    # scrape the following type of site: https://www.hltv.org/stats/players/21167/donk
-    # also need to add the same type of conditions as the teams, where theres maps, time, events, etc
+    url = f"{scraper.default_url}/stats/players/{id}/{player_name if player_name else "random"}"
+    url += URLUtil.get_end_of_url(start_date, end_date, match_type, maps)
+
+    buttons = [scraper.cookie_text]
+    soup = scraper.get_website(url, buttons)
+
+    role_stats_container_div = soup.find("div", class_="role-stats-container standard-box")
+
+    stats_section_firepower_div = role_stats_container_div.find("div", class_="role-stats-section role-firepower")
+    combined_stats_section_firepower_div = stats_section_firepower_div.find("div", class_="role-stats-section-title-wrapper stats-side-combined")
+    firepower = int(combined_stats_section_firepower_div.find("div", class_="row-stats-section-score").find(text=True, recursive=False).strip())
+
+    # There is also another div with this class name as part of it, so we need to filter for the one with this class name exactly
+    target_class_name = "role-stats-section-columns"
+    stats_section_columns_divs = role_stats_container_div.find_all("div", class_=target_class_name)
+    stats_section_columns_div = None
+    for div in stats_section_columns_divs:
+        classes = div.get('class')
+        if len(classes) == 1 and classes[0] == target_class_name:
+            stats_section_columns_div = div
+    combined_stat_divs = stats_section_columns_div.find_all("div", class_="role-stats-section-title-wrapper stats-side-combined", recursive=True)
+    stat_title_to_value_map = {}
+    for combined_stat_div in combined_stat_divs:
+        stat_section_title_div = combined_stat_div.find("div", class_="role-stats-section-title")
+
+        # We can't get the text directly since it's not the only category, so we iterate through the fields and hardcode instead
+        stat_title = stat_section_title_div.contents[2].split("\n")[1]
+        stat_value = int(stat_section_title_div.find("div", class_="row-stats-section-score").find(text=True, recursive=False).strip())
+        stat_title_to_value_map[stat_title] = stat_value
+
+    statistics_div = soup.find("div", class_="statistics")
+    stat_row_divs = statistics_div.find_all("div", class_="stats-row")
+    for stat_row_div in stat_row_divs:
+        # first span is name, second span is value
+        spans = stat_row_div.find_all("span")
+        stat_title = spans[0].get_text(strip=True)
+        stat_value = float(spans[1].get_text(strip=True).replace('%', ''))
+        stat_title_to_value_map[stat_title] = stat_value
+
+    # Storing the stats into the player's data dictionary
+    player.time_specific_data[interval_string] = {
+        "firepower": firepower,
+        "entrying": stat_title_to_value_map["Entrying"],
+        "trading": stat_title_to_value_map["Trading"],
+        "opening": stat_title_to_value_map["Opening"],
+        "clutching": stat_title_to_value_map["Clutching"],
+        "sniping": stat_title_to_value_map["Sniping"],
+        "utility": stat_title_to_value_map["Utility"],
+        "headshot_percentage": stat_title_to_value_map["Headshot %"],
+        "kd_ratio": stat_title_to_value_map["K/D Ratio"],
+        "rounds_played": stat_title_to_value_map["Rounds played"],
+        "dpr": stat_title_to_value_map["Damage / Round"],
+        "kpr": stat_title_to_value_map["Kills / round"],
+        "apr": stat_title_to_value_map["Assists / round"],
+        "dpr": stat_title_to_value_map["Deaths / round"],
+        "rating_2.1": stat_title_to_value_map["Rating 2.1"]
+    }
+
+    # Storing the player with the additional stats into the cache
+    global_cache.set(CacheType.PLAYERS, id, player)
+
+    return player

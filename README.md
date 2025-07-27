@@ -16,6 +16,8 @@ We'll also need to evict time-based data very aggressively from the DB if we pla
 
 Change get_team to get the players and coach from roster rather than top box
 
+Add scraping for coach data
+
 Auto-click Cloudflare's bot protection button("Click to confirm you're human" button), might not be possible(CloudFlare probably detects this)
 
 Get headless browser working(might not be possible due to Cloudflare's bot protection)
